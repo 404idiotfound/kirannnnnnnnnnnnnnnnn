@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catch Kiran 😂</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:linear-gradient(135deg,#17152c,#49244c);color:#fff;font-family:Arial,sans-serif;text-align:center;overflow-x:hidden}
+h1{color:#ffd166;margin:22px 5px;font-size:clamp(25px,6vw,34px)}
+.scoreboard{display:flex;justify-content:center;gap:30px;font-size:21px;font-weight:bold;margin:18px}
+.game{width:320px;height:360px;position:relative;margin:22px auto}
+.closet{position:absolute;bottom:0;width:100%;height:290px;background:#422417;border:12px solid #27130d;border-radius:10px;box-shadow:0 10px 30px #0009;overflow:hidden}
+.inside{position:absolute;inset:0;background:linear-gradient(#160d09,#61371d)}
+.head{position:absolute;width:145px;height:155px;left:50%;bottom:75px;transform:translate(-50%,150px);border-radius:50%;overflow:hidden;z-index:2;cursor:pointer;transition:transform .22s;touch-action:manipulation}
+.head img{width:100%;height:100%;object-fit:cover;object-position:center 39%}
+.head.show{transform:translate(-50%,-10px)}
+.head.hit{filter:brightness(1.25);transform:translate(-50%,15px) scale(.84)}
+.door{position:absolute;top:0;height:100%;width:50%;z-index:3;background:linear-gradient(90deg,#c17a43,#75401f);border:5px solid #482514;transition:transform .35s;pointer-events:none}
+.left{left:0;transform-origin:left}.right{right:0;transform-origin:right}
+.open .left{transform:perspective(400px) rotateY(-85deg)}
+.open .right{transform:perspective(400px) rotateY(85deg)}
+.door:after{content:"●";position:absolute;top:45%;color:#ffd166}
+.left:after{right:12px}.right:after{left:12px}
+button{background:#ffd166;color:#30200c;border:0;padding:14px 25px;border-radius:12px;font-size:18px;font-weight:bold;cursor:pointer;margin:5px}
+button:active{transform:scale(.96)}
+#message{font-size:18px;padding:8px}
+#result{color:#ffd166;font-size:24px;font-weight:bold;min-height:30px}
+.hammer{position:fixed;font-size:60px;z-index:10;pointer-events:none;display:none;transform:rotate(-45deg)}
+.small{font-size:13px;color:#ddd;padding:0 15px}
+</style>
+</head>
+<body>
+<h1>🔨 CATCH KIRAN 😂</h1>
+<div class="scoreboard"><div>🏆 Score: <span id="score">0</span></div><div>⏰ Time: <span id="time">30</span>s</div></div>
+<div class="game"><div class="closet" id="closet">
+<div class="inside"></div>
+<div class="head" id="head"><img id="guyPhoto" alt="Kiran"></div>
+<div class="door left"></div><div class="door right"></div>
+</div></div>
+<div class="hammer" id="hammer">🔨</div>
+<button id="start">START GAME 🎵</button>
+<button id="musicBtn">MUSIC: ON 🔊</button>
+<p id="message">He's hiding in the closet. Tap his face when he appears!</p>
+<div id="result"></div>
+<p class="small">Original game tune • 30-second round • 1 point per successful tap</p>
+<script>
+/* Photo is loaded from the assets folder in the repository. */
+const PHOTO_DATA = "assets/kiran.jpg";
+document.getElementById("guyPhoto").src = PHOTO_DATA;
+
+const head=document.getElementById("head");
+const closet=document.getElementById("closet");
+const scoreDisplay=document.getElementById("score");
+const timeDisplay=document.getElementById("time");
+const message=document.getElementById("message");
+const result=document.getElementById("result");
+const hammer=document.getElementById("hammer");
+const startButton=document.getElementById("start");
+const musicButton=document.getElementById("musicBtn");
+
+let score=0,time=30,playing=false,hit=false,popTimer=null,gameTimer=null;
+let audioCtx=null,musicTimer=null,musicOn=true,noteIndex=0;
+
+/* A short original arcade-style melody made with synthesized notes. */
+const melody=[659,784,988,784,659,523,587,659,784,659,587,523,587,659,784,988];
+function playNote(freq,duration=0.16){
+  if(!audioCtx||!musicOn)return;
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.type="triangle";osc.frequency.value=freq;
+  gain.gain.setValueAtTime(0.0001,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.055,audioCtx.currentTime+0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+duration);
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  osc.start();osc.stop(audioCtx.currentTime+duration+0.02);
+}
+function startMusic(){
+  if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended")audioCtx.resume();
+  if(musicTimer)clearInterval(musicTimer);
+  musicTimer=setInterval(()=>{if(musicOn){playNote(melody[noteIndex%melody.length]);noteIndex++;}},190);
+}
+function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
+musicButton.addEventListener("click",()=>{
+  musicOn=!musicOn;
+  musicButton.textContent=musicOn?"MUSIC: ON 🔊":"MUSIC: OFF 🔇";
+  if(musicOn&&playing)startMusic();else if(!musicOn)stopMusic();
+});
+function hideHead(){head.classList.remove("show","hit");closet.classList.remove("open")}
+function popHead(){
+  if(!playing)return;
+  hit=false;head.classList.remove("hit");
+  closet.classList.add("open");head.classList.add("show");
+  const speed=Math.max(650,1450-score*22);
+  popTimer=setTimeout(()=>{
+    hideHead();
+    popTimer=setTimeout(popHead,300);
+  },speed);
+}
+head.addEventListener("pointerdown",event=>{
+  if(!playing||!head.classList.contains("show")||hit)return;
+  event.preventDefault();hit=true;score++;scoreDisplay.textContent=score;
+  message.textContent="BONK! 😂 +1 POINT";
+  head.classList.add("hit");
+  hammer.style.display="block";
+  hammer.style.left=(event.clientX-25)+"px";
+  hammer.style.top=(event.clientY-60)+"px";
+  setTimeout(()=>hammer.style.display="none",180);
+  clearTimeout(popTimer);
+  setTimeout(()=>{hideHead();if(playing)popTimer=setTimeout(popHead,300);},260);
+});
+function endGame(){
+  playing=false;clearTimeout(popTimer);clearInterval(gameTimer);hideHead();stopMusic();
+  hammer.style.display="none";message.textContent="TIME'S UP!";
+  result.textContent="Final score: "+score+" 🏆";
+  startButton.textContent="PLAY AGAIN 🔁";startButton.style.display="inline-block";
+}
+function startGame(){
+  clearTimeout(popTimer);clearInterval(gameTimer);
+  score=0;time=30;playing=true;hit=false;
+  scoreDisplay.textContent=score;timeDisplay.textContent=time;
+  result.textContent="";message.textContent="Catch him before he disappears!";
+  startButton.style.display="none";
+  startMusic();popHead();
+  gameTimer=setInterval(()=>{
+    time--;timeDisplay.textContent=time;
+    if(time<=0)endGame();
+  },1000);
+}
+startButton.addEventListener("click",startGame);
+</script>
+</body>
+</html>
